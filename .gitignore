@@ -17,3 +17,16 @@ dist/
 
 # Project
 PLAN.md
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Backend (Rust)
+backend/target/
+backend/database.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
