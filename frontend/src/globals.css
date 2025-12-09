@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@theme {
+  /* 废土风自定义颜色 */
+  --color-background: hsl(0 0% 3%);
+  --color-foreground: hsl(40 5% 80%);
+  --color-card: hsl(0 0% 6%);
+  --color-card-foreground: hsl(40 5% 80%);
+  --color-popover: hsl(0 0% 6%);
+  --color-popover-foreground: hsl(40 5% 80%);
+  --color-primary: hsl(0 60% 45%);
+  --color-primary-foreground: hsl(0 0% 98%);
+  --color-secondary: hsl(30 15% 15%);
+  --color-secondary-foreground: hsl(40 5% 80%);
+  --color-muted: hsl(0 0% 12%);
+  --color-muted-foreground: hsl(40 5% 55%);
+  --color-accent: hsl(30 20% 20%);
+  --color-accent-foreground: hsl(40 5% 80%);
+  --color-destructive: hsl(0 70% 40%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(30 10% 18%);
+  --color-input: hsl(30 10% 18%);
+  --color-ring: hsl(0 60% 45%);
+
+  /* 废土风特色颜色 */
+  --color-rust: hsl(20 70% 35%);
+  --color-rust-dark: hsl(20 60% 20%);
+  --color-metal: hsl(220 5% 25%);
+  --color-metal-dark: hsl(220 5% 12%);
+  --color-blood: hsl(0 80% 30%);
+  --color-blood-dark: hsl(0 70% 18%);
+
+  /* 圆角 */
+  --radius-lg: 0.25rem;
+  --radius-md: 0.1875rem;
+  --radius-sm: 0.125rem;
+
+  /* 字体 */
+  --font-mono: "Courier New", "Consolas", monospace;
+
+  /* 动画 */
+  --animate-crt-flicker: crt-flicker 0.1s infinite;
+  --animate-scanline: scanline 8s linear infinite;
+
+  @keyframes crt-flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.98; }
+  }
+
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* CRT 扫描线效果 */
+@utility crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  z-index: 9999;
+}
+
+@utility crt-glow {
+  text-shadow:
+    0 0 2px currentColor,
+    0 0 4px currentColor;
+}
+
+@utility noise-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  z-index: 9998;
+}
+
+@utility vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  z-index: 9997;
+}
