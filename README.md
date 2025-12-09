@@ -1,6 +1,6 @@
 # Buckshot Roulette (恶魔轮盘)
 
-一个基于 React 实现的《恶魔轮盘》(Buckshot Roulette) 网页游戏，支持 **真人 vs AI** 和 **AI vs AI** 对战模式。
+一个基于 React + Rust 实现的《恶魔轮盘》(Buckshot Roulette) 网页游戏，支持 **真人 vs AI** 和 **AI vs AI** 对战模式。
 
 ## 游戏简介
 
@@ -18,32 +18,39 @@
 - **实时 AI 思考展示**：显示 AI 的推理过程和对话
 - **射击动画**：枪口旋转、实弹火焰、空弹烟雾效果
 
+## 项目结构
+
+```
+BuckshotRoulette/
+├── frontend/          # React 前端
+│   └── src/
+│       ├── app/stores/    # Zustand 状态管理
+│       ├── agents/        # AI 系统（Bridge、Prompts、Strategies）
+│       ├── entities/      # 领域模型（道具、子弹）
+│       ├── features/      # UI 功能模块
+│       └── shared/        # 共享工具和 UI 组件
+└── backend/           # Rust 后端 (Actix-web + Diesel)
+    └── src/
+```
+
 ## 快速开始
 
-### 安装依赖
+### 前端
 
 ```bash
-bun install
+cd frontend
+bun install           # 安装依赖
+bun run dev           # 启动开发服务器 http://localhost:3000
+bun run build         # 生产构建
 ```
 
-### 启动开发服务器
+### 后端
 
 ```bash
-bun run dev
-```
-
-应用将在 [http://localhost:3000](http://localhost:3000) 启动。
-
-### 生产构建
-
-```bash
-bun run build
-```
-
-### 预览生产构建
-
-```bash
-bun run preview
+cd backend
+cargo build           # 构建
+cargo run             # 运行服务器
+cargo test            # 运行测试
 ```
 
 ## 配置 AI
@@ -56,6 +63,8 @@ bun run preview
 
 ## 技术栈
 
+### 前端
+
 - **框架**：React 19 + TypeScript 5.9
 - **构建工具**：Rsbuild (基于 Rspack)
 - **状态管理**：Zustand
@@ -63,33 +72,16 @@ bun run preview
 - **动画**：Framer Motion
 - **包管理器**：Bun
 
-## 项目结构
+### 后端
 
-```
-src/
-├── app/stores/        # Zustand 状态管理
-├── agents/            # AI 系统（Bridge、Prompts、Strategies）
-├── entities/          # 领域模型（道具、子弹）
-├── features/          # UI 功能模块
-│   ├── game-table/    # 主游戏界面
-│   ├── player-view/   # 玩家头像
-│   ├── settings/      # 设置对话框
-│   └── signature/     # 签名板
-└── shared/            # 共享工具和 UI 组件
-```
-
-## 部署
-
-项目已配置 GitHub Actions，推送到 `main` 或 `master` 分支时会自动部署到 GitHub Pages。
-
-手动部署：
-1. 进入 GitHub 仓库 → Settings → Pages
-2. Source 选择 **GitHub Actions**
-3. 推送代码或手动触发 workflow
+- **语言**：Rust (Edition 2024)
+- **Web 框架**：Actix-web
+- **ORM**：Diesel
+- **连接池**：r2d2
 
 ## 游戏规则
 
-详见 [GAME_RULES.md](./GAME_RULES.md)
+详见 [frontend/GAME_RULES.md](./frontend/GAME_RULES.md)
 
 ## License
 

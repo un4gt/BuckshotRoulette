@@ -4,97 +4,135 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+### Frontend (React)
+
 ```bash
+cd frontend
 bun install          # Install dependencies
 bun run dev          # Start dev server at http://localhost:3000
-bun run build        # Build for production
+bun run build        # Build for production (outputs to ./dist)
 bun run preview      # Preview production build
+```
+
+### Backend (Rust)
+
+```bash
+cd backend
+cargo build          # Build
+cargo run            # Run (listens on :8080)
+cargo test           # Test
+```
+
+Note: Backend is currently a stub with only a health check endpoint (`/api/v1/health`).
+
+### Docker (Full Stack)
+
+```bash
+docker-compose up    # Frontend on :80, Backend on :8080
 ```
 
 ## Tech Stack
 
-- **React 19** + TypeScript 5.9 + Rsbuild (Rspack-based bundler)
-- **Zustand** for state management
-- **Tailwind CSS 4** with Radix UI primitives
-- **Framer Motion** for animations
-- **Bun** as package manager
-- ES Modules (`"type": "module"`)
+**Frontend**: React 19, TypeScript 5.9, Rsbuild, Zustand, Tailwind CSS 4, Radix UI, Framer Motion, Bun
+
+**Backend**: Rust Edition 2024, Actix-web, Diesel (stub only)
+
+**Docs**: [Rsbuild](https://rsbuild.rs/llms.txt), [Rspack](https://rspack.rs/llms.txt)
 
 ## Project Overview
 
-A React implementation of "Buckshot Roulette" (霰弹枪轮盘赌/恶魔轮盘) - a turn-based risk/reward game where players take turns with a shotgun containing live and blank rounds. Supports Human vs AI and AI vs AI modes.
+A React implementation of "Buckshot Roulette" - a turn-based risk/reward game with a shotgun containing live and blank rounds. Supports Human vs AI and AI vs AI modes with multiple LLM providers.
 
 ### Core Game Rules
 
-- **Three-match system**: Game consists of 3 matches with increasing difficulty
-  - Match 1: 2 HP, 0 items per round (pure psychology)
-  - Match 2: 4 HP, 2 items per round (introduces items)
-  - Match 3: 5 HP, 4 items per round (guillotine mechanic)
-- Shotgun contains randomized live (damage) and blank (safe) rounds
-- Shoot yourself with blank = keep your turn; shoot opponent = always ends turn
-- Players have health (defibrillator charges); match ends when one player's HP reaches 0
+- **Three-match system** with increasing difficulty:
+  - Match 1: 2 HP, 0 items (pure psychology)
+  - Match 2: 4 HP, 2 items per round
+  - Match 3: 5 HP, 4 items per round, guillotine mechanic
+- Shoot yourself with blank = keep turn; shoot opponent = ends turn
 - 9 item types: saw, handcuffs, cigarettes, magnifier, drink, adrenaline, medicine, inverter, phone
-- Handcuffs skip opponent's turn (user gets consecutive turns)
-- Adrenaline steals item to your inventory (does not immediately use)
+- **Guillotine** (Match 3 only): When HP < 2, healing disabled, one live round hit = instant death
 - Items fully reset when ammo is depleted (no carry-over between sub-rounds)
-- **Guillotine mechanic** (Match 3 only): When HP drops below 2, player enters "one-hit kill" state - healing items are disabled and any live round hit is instant death
+
+### AI Providers
+
+Supported via Bridge pattern in `frontend/src/agents/services/`:
+- `gemini` - Google Generative AI SDK
+- `openai` - Native OpenAI SDK
+- `deepseek` - OpenAI-compatible (`api.deepseek.com`)
+- `grok` - OpenAI-compatible (`api.x.ai`)
+- `openrouter` - OpenAI-compatible (`openrouter.ai`)
+- `openai-compatible` - Custom baseURL
+- `preset` - Backend-managed presets (admin-configured)
 
 ## Architecture
 
-### Directory Structure
+### Project Structure
 
 ```
-src/
-├── app/stores/           # Zustand stores
-│   ├── game-store.ts     # Core game state, actions (shoot, useItem, nextTurn)
-│   ├── game-settings.ts  # AI config, game mode settings (persisted)
-│   └── llm-log-store.ts  # LLM interaction logging for debug UI
-├── agents/               # AI system
-│   ├── types.ts          # AgentTurnOutput, GameSnapshot, AgentAction types
-│   ├── prompts/          # System prompt construction (dealer persona, rules context)
-│   ├── services/         # AI bridge abstraction
-│   │   ├── ai-bridge.ts  # AIBridge interface, ConversationManager, JSON parsing
-│   │   └── bridges/      # Provider implementations (GeminiBridge, OpenAIBridge)
-│   └── strategies/       # State serialization for AI prompts
-├── entities/             # Domain models
-│   ├── items/            # Item types and effects
-│   └── shell/            # Shell (bullet) types
-├── shared/               # Shared utilities and UI components
-│   ├── lib/utils.ts      # cn() utility for className merging
-│   └── ui/               # Radix UI primitives (Button, Card, Dialog, Input, Select)
-└── features/             # UI features
-    ├── game-table/       # Main game UI
-    │   ├── hooks/        # useAITurn, useActionExecutor
-    │   └── components/   # LLM log panel, spectate controls, adrenaline modal
-    ├── player-view/      # Player avatar component
-    ├── settings/         # Settings dialog for AI configuration
-    └── signature/        # Signature pad and waiver dialog
+BuckshotRoulette/
+├── frontend/         # React 19 + TypeScript + Rsbuild
+│   └── src/
+│       ├── app/
+│       │   ├── router.tsx        # React Router v7 routes
+│       │   └── stores/           # Zustand stores (game-store, game-settings, auth-store, llm-log-store)
+│       ├── agents/               # AI system (bridges, prompts, strategies)
+│       ├── entities/             # Domain models (items, shells)
+│       ├── features/             # UI features
+│       │   ├── auth/             # Login page
+│       │   ├── dashboard/        # Admin dashboard (model presets)
+│       │   ├── game/             # Game page wrapper
+│       │   ├── game-table/       # Main game UI and hooks
+│       │   ├── lobby/            # Game lobby / main menu
+│       │   ├── player-view/      # Player avatar component
+│       │   ├── settings/         # AI settings dialog
+│       │   └── signature/        # Waiver signature pad
+│       └── shared/               # Shared utilities, UI components, API client
+└── backend/          # Rust Actix-web server (stub)
 ```
 
-### Key Patterns
+### Routes
 
-**AI Bridge Pattern**: All AI providers implement `AIBridge` interface with `query()`, `queryStream()`, and `validateConfig()`. Bridges registered via factory in `services/index.ts`. Supported providers:
-- `gemini` - Google Generative AI SDK
-- `deepseek` - OpenAI-compatible (`https://api.deepseek.com`)
-- `grok` - OpenAI-compatible (`https://api.x.ai/v1`)
-- `openai` - Native OpenAI
-- `openrouter` - OpenAI-compatible (`https://openrouter.ai/api/v1`)
-- `openai-compatible` - Custom baseURL
+| Path | Component | Access |
+|------|-----------|--------|
+| `/` | LobbyPage | Public |
+| `/login` | LoginPage | Public |
+| `/game` | GamePage | Public |
+| `/dashboard` | DashboardPage | Admin only |
 
-**Game State Flow**:
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `frontend/src/app/stores/game-store.ts` | All game logic: damage, items, turns, shooting |
+| `frontend/src/app/stores/auth-store.ts` | Authentication state (JWT, user info) |
+| `frontend/src/agents/services/ai-bridge.ts` | AIBridge interface, JSON extraction, bracket balancing |
+| `frontend/src/agents/strategies/state-serializer.ts` | Game state to AI prompt conversion |
+| `frontend/src/features/game-table/hooks/use-ai-turn.ts` | AI turn orchestration |
+| `frontend/src/features/game-table/shotgun.tsx` | Shotgun SVG with rotation/muzzle animations |
+
+### Path Aliases (Frontend)
+
+```
+@/          → ./src/
+@/shared/   → ./src/shared/
+@/entities/ → ./src/entities/
+@/features/ → ./src/features/
+@/agents/   → ./src/agents/
+@/app/      → ./src/app/
+```
+
+### AI Turn Flow
+
 1. `useAITurn` hook detects AI's turn via `game.phase`
 2. Creates `GameSnapshot` from current state
 3. Builds prompt via `state-serializer.ts`
-4. Streams response, extracts thought/dialogue/action
-5. `useActionExecutor` executes the action (USE_ITEM, SHOOT_OPPONENT, SHOOT_SELF)
+4. Streams response through AIBridge
+5. Extracts JSON with multi-level fallback (direct parse → code block → bracket matching → auto-fix)
+6. `useActionExecutor` executes action (USE_ITEM, SHOOT_OPPONENT, SHOOT_SELF)
 
-**AI vs AI Mode**:
-- Both players can be AI-controlled simultaneously
-- `useAITurn` hook maintains independent state for each AI (`playerAiState`, `dealerAiState`)
-- Spectate controls available: pause/resume, speed (0.5x-3x), step mode
-- Each AI has its own `ConversationManager` to maintain conversation history
+### AI Output Format
 
-**AI Output Format** (JSON):
 ```typescript
 interface AgentTurnOutput {
   thought: string    // Internal reasoning (shown in UI)
@@ -103,43 +141,18 @@ interface AgentTurnOutput {
 }
 ```
 
-### Important Files
+### Game State Phases
 
-- `src/app/stores/game-store.ts` - All game logic: damage, item effects, turn management, shooting animations
-- `src/agents/services/ai-bridge.ts` - JSON extraction with bracket balancing, handles malformed LLM output
-- `src/agents/strategies/state-serializer.ts` - Converts game state to AI-readable prompts
-- `src/features/game-table/hooks/use-ai-turn.ts` - Orchestrates AI turn flow
-- `src/features/game-table/shotgun.tsx` - Shotgun SVG with rotation/muzzle flash animations
+```
+'idle' → 'loading' → 'round-start' → 'player-turn'/'dealer-turn' → 'shooting' → 'round-end' → 'game-over'
+```
 
 ## The Dealer Persona
 
-The AI dealer is an "industrial horror" character - cold, mechanical, with shark-like teeth. Dialogue should be terse and metallic:
-- Opening: "签下免责声明。" (Please sign the waiver.)
-- Advantage: "有意思。" (Interesting...)
-- Disadvantage: "还没结束。" (Not over yet.)
+The AI dealer is an "industrial horror" character - cold, mechanical, with shark-like teeth. Dialogue should be terse and metallic.
 
-## Game State Key Fields
+## Additional Documentation
 
-```typescript
-interface GameState {
-  phase: 'idle' | 'loading' | 'round-start' | 'player-turn' | 'dealer-turn' | 'shooting' | 'round-end' | 'game-over'
-  match: 1 | 2 | 3                          // Current match number
-  subRound: number                          // Current sub-round (ammo cycle)
-  matchConfig: MatchConfig                  // Current match settings
-  shootingTarget: 'self' | 'opponent' | null  // For gun rotation animation
-  lastShotResult: 'live' | 'blank' | null     // For muzzle flash (live) vs smoke (blank)
-}
-
-interface PlayerState {
-  guillotineActive: boolean  // One-hit kill state (Match 3, HP < 2)
-  // ...other fields
-}
-
-// Match configuration
-const MATCH_CONFIGS = {
-  1: { initialHealth: 2, itemsPerRound: 0, initialShells: 2, hasGuillotine: false },
-  2: { initialHealth: 4, itemsPerRound: 2, initialShells: 3, hasGuillotine: false },
-  3: { initialHealth: 5, itemsPerRound: 4, initialShells: 4, hasGuillotine: true },
-}
-// Shell count per sub-round: initialShells + (subRound - 1), max 8
-```
+- `frontend/CLAUDE.md` - Frontend-specific guidance with detailed game state fields and match configs
+- `frontend/ARCHITECTURE.md` - Mermaid diagrams for data flow, state machine, AI flow
+- `frontend/GAME_RULES.md` - Detailed game mechanics with examples
